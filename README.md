@@ -85,7 +85,7 @@ def make_image_arrays_flip (imgs, angles) : # change image to flip
     return imgs, angles
 ```
 
-![flip(160 x 38)](images/P3_figure_grayscaled.png)
+![flip(160 x 38)](images/P3_figure_flipped.png)
 flip(160 x 38) [random 10%]
 
 **[Split training set & validation set]** There is no labeled data (angles), so I split training data to parts. the ratio is traning : validation = 90 : 10.
@@ -133,6 +133,8 @@ activation_8 (Activation: ReLU)    |    (None, 10)      |      0       |
 ```
 Epoch : 5
 batch_size = 32
+Adam Optimizer
+mse(mean squared error)
 ```
 
 I tried many times on verious epoch. But there is no need more than 5 epoch. The accuracy is no more than imporoved after epoch 5. So I want to prevent overfitting, limit only 5 epoch. It saves much time and the result is so statisfied.
