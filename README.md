@@ -37,7 +37,7 @@ So I make recovery data like filming movie. Starting from left lane and start re
 
 ```
 
-** 1. Get file name and make array (when program starts) **
+**1. Get file name and make array (when program starts)**
 The track data csv file has many fields, but I use only two field 'center, steering'
 
 ```
@@ -55,7 +55,7 @@ steering_angles += tmp_angle
 ```
 
 
-** 2. Image Processing (genetrate process)**
+**2. Image Processing (genetrate process)**
 
 ![Original(320x160)](images/P3_figure_original.png)
 Original(320x160)
@@ -178,8 +178,8 @@ Accuracy
 ** generator
 I make my own generator "generate_arrays_from_array". It return batch_size images array from input array which have image file names.
 
-** eary stopping
-Put EarlyStopping for usless repeatition.
+** early stopping
+Put EarlyStopping for prohibit useless repeatition.
 early_stopping = EarlyStopping(monitor='val_loss', patience=2)
 
 
@@ -197,7 +197,10 @@ Simulator must process same image processing when modeling. It returns one image
   image_array = cv2.equalizeHist(image_array)  # equalize Histogram
   transformed_image_array = util.reformat_driving_image(image_array)
 ```
+It is not fully satisfied result. Because I use keyboard input, so there is so many error and not continuos angle input (It is cut on every changing wheel) But it's cost is decreased on every epoch, and increased or maintained accuracy, so this model works.
 
+
+** Some problem ** I made recovery data on configuration (640x480), Simple Graphics Quality. It runs well, doesn't go out of lane. But if change it's Graphics quality to Fantastic, it occurred some problem. Because some 'change angle' data is omitted when process complex graphic image, so car go out of lane. I'll improve more and more for safety driving considering this problem.
 
 ## 5. For improvement
 **use left, right camera image** If use left & right camera image, then it's training can be more strengthen.
@@ -207,4 +210,4 @@ make smooth wheel angle
 
 **More CORRECT traning data** The most error is because of my keyboard input error. More practice then, more best result. I think I'd rather than find someone who can car drive game very well. Or I must buy joystick.
 
-**Is that right wheel angle? ** The angle value is the value on the spot. i.e. it's not the "will be changed value". I think if I changed the angle, then I must check 'before angle' and 'next angle' and I must turn 'the diffrence of two'. Of course 'power' and 'car speed' is concerned. So, it is better to think about "next angle" not "this spot angle"
+**Is that right wheel angle?** The angle value is the value on the spot. i.e. it's not the "will be changed value". I think if I changed the angle, then I must check 'before angle' and 'next angle' and I must turn 'the difference of two'. Of course 'power' and 'car speed' is concerned. So, it is better to think about "next angle" not "this spot angle"
