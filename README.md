@@ -1,10 +1,12 @@
 # Self-Driving Car Nanodegree - Udacity
 ## Project 3 :Behavioral Cloning
-### Kwnaghyun JUNG 19 DEC 2016
+### Kwnaghyun JUNG
+
+2nd Submission 8 JAN 2017
 
 ## Overview
 ```
-1. make train data, receovery data by using simulator program.
+1. make train data, recovery data by using simulator program.
 2. build and train my network(use Keras)
   * Take in an image from the center camera of the car. This is the input to your neural network.
   * Output a new steering angle for the car.
@@ -13,153 +15,189 @@
 ```
 ### 1. Get training data , recovery data
 
-I've tried so many times running track with my keyboard on simulator. But It's not so easy thing which I think. Because, the speed of car is rapidly goes up to 30 mph, and that state, I cannot controll car correctly. It moves like drunken man. Because when I use keyboard instead of joystick, the control is so simple (left or right) and the angel is so sharp, so the car moves soon, out of control.
-
-But in spite of that condition, I made so many data at 30 mph speed, but it doesn't work well in my model. It always went out of track.
-
-So my choice, "limit speed at 10mph". It's so easy go to slow and the change angle is softer than when fast. So I've recollected all data again with speed approximately 10mph.
+I used only keyboard arrow key when using simulator. So some movements are so tough compared with using joystick. But after so may trying, I could do success track training.
 
 **Traning data**
 
-About 3 laps, I did  centerline driving,  in the middle of road. But it is often leaned to left. Because the track is almost left bend, so I want to safe turn.
+About 2 laps, I did  centerline driving,  in the middle of road. But it is often leaned to left. Because the track is almost left bend, so I want to safe turn.
 
 **Recovery data**
 
 I tried to make recovery data so many times, but it's so hard. Because when I go to right side of track and recover to center line, then there is wrong data from center to right side. Maybe that data effect to bad result.
 
-So I make recovery data like filming movie. Starting from left lane and start recording, if the car enter to middle, then stop recording. (I called it 'CUT'). So I tried so many "Camera!", "Cut!" on many filming location. After that, I have full of recovory data on the track 1.
+So I make recovery data like filming movie. Starting from left lane and start recording, if the car enter to middle, then stop recording. (I called it 'CUT'). So I tried so many "Camera!", "Cut!" on many filming location. After that, I have full of recovery data on the track 1.
+
 
 ### 2. Pre-processing
-** Get file name **
+```
 
-There are two folders "data_hangulo3/" which is normal racing data, "data_recover/" which contains recovery data. In that folder there is 'driving_log.csv' file, and 'IMG' folder which have real images saved. First of all read csv files and divide into colums and extract only "center", "steering" labled which I put the first row myself. (When it made by simulator, there is no header like that.) After that, make list filenames and angles.
+1. Make filnename array from selected folder(directory)'s csv file
+2. Split train set & test set using train_test_split(sklearn.model_selection) train : test = 85% : 15%
+3. When processing model, model.filt_generator call 'generate_arrays_from_array()' function. This function 1)shuffle(only for traning set) 2)read image & image processing 3) return(yield) image & angles (only batch size)
+
+```
+
+** 1. Get file name and make array (when program starts) **
+The track data csv file has many fields, but I use only two field 'center, steering'
+
+```
+center,left,right,steering,throttle,brake,speed
+IMG/center_2016_12_24_01_31_26_637.jpg, IMG/left_2016_12_24_01_31_26_637.jpg, IMG/right_2016_12_24_01_31_26_637.jpg, 0, 0.02501696, 0, 0.006750231
+```
+
+Get center(file name) and steering(angle) from csv file, and make array. If there is many folder, then add it also.
 
 ```python
-tmp_center, tmp_angle = read_csv_file("data_hangulo3","driving_log.csv")
-center_fnames += tmp_center
-steering_angles += tmp_angle
 
-tmp_center, tmp_angle = read_csv_file("data_recover","driving_log.csv")
+tmp_center, tmp_angle = tmp_center, tmp_angle = read_csv_file("data_recovery","driving_log.csv", training=False)
 center_fnames += tmp_center
 steering_angles += tmp_angle
 ```
 
 
-** Image Processing **
+** 2. Image Processing (genetrate process)**
 
 ![Original(320x160)](images/P3_figure_original.png)
 Original(320x160)
 
-There are 3 camera pictures on this captured data, but I only use centered camera. Because I want to use left or right camera's picture, but it's to difficult determine the "shift value" of wheel, and change to correct the distortion. (Of course, I'll try and try.)
+There are 3 camera pictures on this captured data, but I only use centered camera. Because I want to use left or right camera's picture, but it's to difficult determine the "shift value" of wheel, and change to correct the distortion.
 
-**[RESIZE]** I've run the simulator on resolution (640 x 480). But the simulator always return the captured image (320 x 160). First time, I put raw data to in my model, but It's too big to process. And took too much time to train. So I changed it to half (180 x 80)
+Every genetrate process below image processing is occurred.
+
+```
+center_img = cv2.imread(center, cv2.IMREAD_GRAYSCALE)
+center_img = cv2.resize(center_img, (80, 40))  # resize image 80x40 (for fast process)
+center_img = util.crop_driving_image(center_img) # crop 80x20
+center_img = cv2.equalizeHist(center_img) # image processing
+
+```
 
 
-![Resized(160 x 80)](images/P3_figure_resized.png)
-Resized(160 x 80)
+**[GRAYSCALE]** Original color image converted grayscale image when it is read from file. For simple processing.
+
+**[RESIZE]** I've run the simulator on resolution (640 x 480). But the simulator always return the captured image (320 x 160). First time, I put raw data to in my model, but It's too big to process. And took too much time to train. So I changed it to quarter (80 x 40)
+
+
+![Resized(80 x 40)](images/P3_figure_resized.png)
+Grayscale & Resized(80 x 40)
 
 
 **[CROP]** But, there is useless part in resized picture, yet. the bottom pixels and top pixels could be cropped. Becuase upper horizon part and car bumper part is can be noisy and make confused when training.
 
-So, my last size **(160 x 38 )** [width, height]
+So, my last size **(80 x 20 )** [width, height]
 
-![Cropped(160 x 38)](images/P3_figure_cropped.png)
-Cropped(160 x 38)
-
-
-**[GRAYSCALE & Normalize]** And it dosen't need to be color, so I make it grayscale image. And for simple and for good training, nomalize the values of image. From [0:255] to [0:1] (float value)
-
-![grayscale(160 x 38)](images/P3_figure_grayscaled.png)
-grayscale(160 x 38)
+![Cropped(80 x 20)](images/P3_figure_cropped.png)
+Cropped(80 x 20)
 
 
-**[Random flip]** Track1 has many left-turns. So I found trained car is leaned almost left. And it occured some wrong driving result. So I make 10% of images flip vertical randomly. Everytime process images, it is filpped with 10% ratio. I think it's good idea, if track has many left turn and right turn mixed, then make all images flip, and add to train set. Important thing is when the image flipped, then the wheel angle changed sign. From (-) to (+) vise versa
+**[Equalizes the histogram]** Equalizes the histogram of a grayscale image. when change image to graycale, there is some weaken part of image. So for more powerful processing, I equalizes the histrogram of image. After this processing, normalize the values of image from [0...255] to [0...1].
 
 
 
-```python
-def make_image_arrays_flip (imgs, angles) : # change image to flip
-  for i, img, angle in zip( range(len(imgs)), imgs, angles) :
-    if(np.random.choice(10) == 0 ) : #10%
-      imgs[i], angles[i]  = make_image_flip(img,angle) # flip
-    return imgs, angles
-```
+![grayscale(160 x 38)](images/P3_figure_histogram.png)
+Equalizes the histogram (80x20)
 
-![flip(160 x 38)](images/P3_figure_flipped.png)
-flip(160 x 38) [random 10%]
+(I delete flip processing in this submission)
 
-**[Split training set & validation set]** There is no labeled data (angles), so I split training data to parts. the ratio is traning : validation = 90 : 10.
-```python
-X_train, X_test, y_train, y_test = train_test_split(X_train, y_train,
-                                                        test_size=0.1,
-                                                        random_state=0)
-
-```                                                                
 
 
 ### 3. Modeling
 
 I make my model from the research <A href=" https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf">[NVIDIA's paper]</A>. But I remove some layer and changed some part. I try to train more than hundred of times for this project, everytime I changed the shape of model and counting time and accuracy. So this is the last version of mine.
 
+(Modified at this submission)
+Added BatchNomalization Layer and 2 drop out layers. Change some size of filter & Dense size compared with 1st submission.
 
+** add some
 
 ## X_train shape: (7693, 38, 160, 1) ##
+
 Layer (type)       |              Output Shape     |     Param #   |  filter size
--------------------|-------------------|-------------------|-------------------|
-**convolution2d_1** (Convolution2D) | (None, 19, 80, 24)  |  624     |   (5 x 5) strides 2
-activation_1 (Activation: ReLU)   |     (None, 19, 80, 24)  |  0       |    
-**convolution2d_2** (Convolution2D) | (None, 8, 38, 36)   |  21636   |    (5 x 5) strides 2
-activation_2 (Activation: ReLU)      |  (None, 8, 38, 36)   |  0        |   
-**convolution2d_3** (Convolution2D) | (None, 8, 38, 48)   |  43248    |   (5 x 5) strides 1
-activation_3 (Activation: ReLU)   |     (None, 8, 38, 48)   |  0         |  
-maxpooling2d_1 (MaxPooling2D: ReLU) |   (None, 4, 19, 48)  |   0        |   maxpooling (2,2)
-**convolution2d_4** (Convolution2D) | (None, 2, 17, 64)   |  27712     |  (3 x 3) stride 1
-activation_4 (Activation: ReLU)   |     (None, 2, 17, 64)   |  0        |   
-maxpooling2d_2 (MaxPooling2D)  |  (None, 1, 8, 64)   |   0    |        maxpooling (2,2)
-**flatten_1** (Flatten)          |    (None, 512)       |    0       |    
-**dense_1** (Dense)             |     (None, 100)      |     51300   |    
-activation_5 (Activation: ReLU)   |     (None, 100)      |     0     |    
-**dense_2** (Dense)              |    (None, 100)       |    10100   |    
-activation_6 (Activation: ReLU)     |   (None, 100)     |      0     |    
-**dense_3** (Dense)              |    (None, 50)      |      5050   |     
-activation_7 (Activation: ReLU)   |     (None, 50)       |     0     |    
-**dense_4** (Dense)              |    (None, 10)     |       510   |      
-activation_8 (Activation: ReLU)    |    (None, 10)      |      0       |  
-**dense_5** (Dense)              |    (None, 1)      |       11     |     Output (float)
+------|------------------|-------|-------------------|
+**convolution2d_1** (Convolution2D)  |(None, 10, 40, 24)  |  240      |   (3x3) strides 2
+batchnormalization_1 (BatchNorma |(None, 10, 40, 24)  |  48     |    Batch Normailization
+activation_1 (Activation)       | (None, 10, 40, 24) |   0      |     
+**convolution2d_2** (Convolution2D) | (None, 5, 20, 48)  |   10416   |    (3x3) strides 2
+activation_2 (Activation)   |     (None, 5, 20, 48)  |   0      |     
+**convolution2d_3** (Convolution2D) | (None, 5, 20, 96)   |  18528   |    (2x2)
+activation_3 (Activation)     |   (None, 5, 20, 96)    | 0    |      
+maxpooling2d_1 (MaxPooling2D)   | (None, 2, 10, 96)  |   0    |     maxpooling (2,2)
+**convolution2d_4** (Convolution2D) | (None, 2, 10, 192) |   73920   |    (2x2)
+activation_4 (Activation)      |  (None, 2, 10, 192)  |  0     |      
+maxpooling2d_2 (MaxPooling2D) |   (None, 1, 5, 192)  |   0     |     maxpooling (2,2)
+dropout_1 (Dropout)          |    (None, 1, 5, 192)   |  0    |      
+flatten_1 (Flatten)           |   (None, 960)      |     0     |     
+**dense_1** (Dense)                |  (None, 512)   |        492032   |   
+activation_5 (Activation)      |  (None, 512)     |      0        |   
+dropout_2 (Dropout)           |   (None, 512)    |       0     |     
+**dense_2** (Dense)              |    (None, 256)      |     131328   |   
+activation_6 (Activation)    |    (None, 256)     |      0    |     
+**dense_3** (Dense)               |   (None, 256)       |    65792  |    
+activation_7 (Activation)    |    (None, 256)   |        0     |    
+**dense_4**(Dense)              |    (None, 1)      |       257    |    output (float)
 
-**Total params: 160191**
 
-**Train on 7693 samples, validate on 855 samples**
+**Total params: 792561**
+
 ```
-Epoch : 5
+Epoch : 20 (with EarlyStopping)
 batch_size = 32
 Adam Optimizer
 mse(mean squared error)
 ```
 
-I tried many times on verious epoch. But there is no need more than 5 epoch. The accuracy is no more than imporoved after epoch 5. So I want to prevent overfitting, limit only 5 epoch. It saves much time and the result is so statisfied.
-
-** The reson of no Dropout ** If you see my model, then you can have question, 'Why there is not Dropout layer?'. Ok, dropout layer is very efficient method to prevent overfitting. So, first time, I put many drop out layer between layers. But strange result is occured. All output is stick to one value. So my car always go out of lane, and goes some neverland. (You know, this simulator can go under the water and cross to rock.)
-
-So, after few days struggling, I found that if remove all dropout layer, then it works! So, I delete all dropout layers. I think I have only 5 epoch and data set is not too big, so it is usless dropout layer.
-
 
 **Training Result : The last value after 5 epoch,**
-loss: 0.0326 - acc: 0.6841 - val_loss: 0.0315 - val_acc: 0.6807
+```
+Epoch 1/20
+6816/6816 [==============================] - 28s - loss: 0.0625 - acc: 0.6587 - val_loss: 0.0584 - val_acc: 0.5938
+Epoch 2/20
+6816/6816 [==============================] - 18s - loss: 0.0525 - acc: 0.6573 - val_loss: 0.0638 - val_acc: 0.6250
+Epoch 3/20
+6816/6816 [==============================] - 17s - loss: 0.0499 - acc: 0.6582 - val_loss: 0.0459 - val_acc: 0.7500
+Epoch 4/20
+6816/6816 [==============================] - 17s - loss: 0.0467 - acc: 0.6589 - val_loss: 0.0146 - val_acc: 0.6562
+Epoch 5/20
+6816/6816 [==============================] - 17s - loss: 0.0455 - acc: 0.6583 - val_loss: 0.0792 - val_acc: 0.7188
+Epoch 6/20
+6816/6816 [==============================] - 17s - loss: 0.0429 - acc: 0.6609 - val_loss: 0.0421 - val_acc: 0.7188
+Epoch 7/20
+6816/6816 [==============================] - 17s - loss: 0.0425 - acc: 0.6620 - val_loss: 0.0244 - val_acc: 0.7500
 
-The accuracy is near 68% ~ 69%. If I add some epoch, but it is not imporoved. This is best result from this model and training data.
+```
+Validation loss starts from 0.0584, it decreased every epoch and stop at 0.425. And Test set Accuracy is start from 0.5938 and reach to 0.75 at epoch 7.
+
+I use keras history object when it returns end of modeling, and the graph is below.
+
+![Result:loss](images/P3_result1.png)
+Loss
+
+![Result:accuracy](images/P3_result2.png)
+Accuracy
+
+** generator
+I make my own generator "generate_arrays_from_array". It return batch_size images array from input array which have image file names.
+
+** eary stopping
+Put EarlyStopping for usless repeatition.
+early_stopping = EarlyStopping(monitor='val_loss', patience=2)
+
 
 ## 4. Result : Test with simulator
-The testing module have no speed controller. It's speed is increased until max speed (30mph). As I mentioned my train model is based on the **speed approx. 10 mph.** So I've changed some code, now, the car's speed is limited near 10 mph.
-
-```python
-   if( speed < 10) : # limit speed until 10 mph
-       throttle = 0.2
-   else :
-       throttle = 0.1
+Simulator must process same image processing when modeling. It returns one image (center camera), so I attach same image processing on it.
 ```
-You can see the simulation result at Youtube (https://youtu.be/4wXXPss54Bw). It is a little slow, but it runs well.
-In fact, I've tested on faster speed environment, if speed limit is increased 20mph, then first lap is OK, but second lap, the car goes neverland. Under limitation 30mph, the first lap is faied. This is so simple reason. This simulation model have no factor about ***"SPEED"*** Under low speed, the wheel's angle is changed a little bit large and long time, but under high speed, you need change angle a little bit small and shortly maintained. My model is 10mph angle is larger than 30mph's so it runs out of track, with diffrent speed. If I have joystick or more training the keyboard control, then I want to try 30mph model also.
+  imgString = data["image"]
+  image = Image.open(BytesIO(base64.b64decode(imgString)))
+
+  image_array = np.asarray(image)
+  image_array = cv2.cvtColor( image_array, cv2.COLOR_RGB2GRAY ) # change to GrayImage
+
+  image_array= cv2.resize(image_array, (80,40))  # resize
+  image_array = util.crop_driving_image(image_array) # crop
+  image_array = cv2.equalizeHist(image_array)  # equalize Histogram
+  transformed_image_array = util.reformat_driving_image(image_array)
+```
+
 
 ## 5. For improvement
 **use left, right camera image** If use left & right camera image, then it's training can be more strengthen.
